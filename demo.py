@@ -65,7 +65,7 @@ def infer(net , img , transform , thresh , cuda , shrink):
     if shrink != 1:
         img = cv2.resize(img, None, None, fx=shrink, fy=shrink, interpolation=cv2.INTER_LINEAR)
     x = torch.from_numpy(transform(img)[0]).permute(2, 0, 1)
-    x = Variable(x.unsqueeze(0) , volatile=True)
+    x = Variable(x.unsqueeze(0) ,requires_grad=False)
     if cuda:
         x = x.cuda()
     #print (shrink , x.shape)

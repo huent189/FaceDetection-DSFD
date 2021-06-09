@@ -21,6 +21,7 @@ from torch.autograd import Variable
 from data import *
 from data import BaseTransform, TestBaseTransform
 from data import WIDERFace_CLASSES as labelmap
+from data.darkface import DarkFaceDataset
 from data import (WIDERFace_ROOT, WIDERFaceAnnotationTransform,
                   WIDERFaceDetection)
 from face_ssd import build_ssd
@@ -58,11 +59,13 @@ def detect_face(image, shrink):
 
     x = torch.from_numpy(x).permute(2, 0, 1)
     x = x.unsqueeze(0)
-    x = Variable(x.cuda(), volatile=True)
+    x = Variable(x.cuda(), requires_grad=False)
 
     #net.priorbox = PriorBoxLayer(width,height)
     y = net(x)
-    detections = y.data
+    # detections = y.data
+    detections = y
+
     scale = torch.Tensor([width, height, width, height])
 
     boxes=[]
@@ -70,7 +73,7 @@ def detect_face(image, shrink):
     for i in range(detections.size(1)):
         j = 0
         while detections[0,i,j,0] >= 0.01:
-            score = detections[0,i,j,0]
+            score = detections[0,i,j,0].cpu().numpy()
             pt = (detections[0, i, j, 1:]*scale).cpu().numpy()
             boxes.append([pt[0],pt[1],pt[2],pt[3]])
             scores.append(score)
@@ -207,7 +210,7 @@ def bbox_vote(det):
 
 
 def write_to_txt(f, det , event, im_name):
-    f.write('{:s}\n'.format(str(event[0][0])[2:-1] + '/' + im_name + '.jpg'))
+    f.write('{:s}\n'.format(im_name + '.jpg'))
     f.write('{:d}\n'.format(det.shape[0]))
     for i in range(det.shape[0]):
         xmin = det[i][0]
@@ -233,7 +236,8 @@ print('Finished loading model!')
 
 # load data
 
-testset = WIDERFaceDetection(args.widerface_root, 'val' , None, WIDERFaceAnnotationTransform())
+# testset = WIDERFaceDetection(args.widerface_root, 'val' , None, WIDERFaceAnnotationTransform())
+testset = DarkFaceDataset(args.widerface_root, 'val' , None, WIDERFaceAnnotationTransform())
 #testset = WIDERFaceDetection(args.widerface_root, 'test' , None, WIDERFaceAnnotationTransform())
 
 
@@ -244,7 +248,7 @@ def vis_detections(imgid, im,  dets, thresh=0.5):
     if len(inds) == 0:
         return
     im = im[:, :, (2, 1, 0)]
-    print (len(inds))
+    # print (len(inds))
     fig, ax = plt.subplots(figsize=(12, 12))
     ax.imshow(im, aspect='equal')
     for i in inds:
@@ -279,31 +283,30 @@ def test_widerface():
     thresh=cfg['conf_thresh']
     save_path = args.save_folder
     num_images = len(testset)
+    with torch.no_grad():
+      for i in range(0, num_images):
+          image = testset.pull_image(i)
+          img_id, annotation = testset.pull_anno(i)
+          event = testset.pull_event(i)
+          print('Testing image {:d}/{:d} {}....'.format(i+1, num_images , img_id))
+          #max_im_shrink = ( (2000.0*2000.0) / (img.shape[0] * img.shape[1])) ** 0.5
+          max_im_shrink = (0x7fffffff / 200.0 / (image.shape[0] * image.shape[1])) ** 0.5 # the max size of input image for caffe
+          max_im_shrink = 3 if max_im_shrink > 3 else max_im_shrink
+              
+          shrink = max_im_shrink if max_im_shrink < 1 else 1
 
-    for i in range(0, num_images):
-        image = testset.pull_image(i)
-        img_id, annotation = testset.pull_anno(i)
-        event = testset.pull_event(i)
-        print('Testing image {:d}/{:d} {}....'.format(i+1, num_images , img_id))
-        #max_im_shrink = ( (2000.0*2000.0) / (img.shape[0] * img.shape[1])) ** 0.5
-        max_im_shrink = (0x7fffffff / 200.0 / (image.shape[0] * image.shape[1])) ** 0.5 # the max size of input image for caffe
-        max_im_shrink = 3 if max_im_shrink > 3 else max_im_shrink
-            
-        shrink = max_im_shrink if max_im_shrink < 1 else 1
-
-        det0 = detect_face(image, shrink)  # origin test
-        det1 = flip_test(image, shrink)    # flip test
-        [det2, det3] = multi_scale_test(image, max_im_shrink)#min(2,1400/min(image.shape[0],image.shape[1])))  #multi-scale test
-        det4 = multi_scale_test_pyramid(image, max_im_shrink)
-        det = np.row_stack((det0, det1, det2, det3, det4))
-
-        dets = bbox_vote(det)
-        #vis_detections(i ,image, dets , 0.8)         
-        
-        if not os.path.exists(save_path + event):
-            os.makedirs(save_path + event)
-        f = open(save_path + event + '/' + img_id.split('.')[0] + '.txt', 'w')
-        write_to_txt(f, dets , event, img_id)
-        
+          det0 = detect_face(image, shrink)  # origin test
+          det1 = flip_test(image, shrink)    # flip test
+          [det2, det3] = multi_scale_test(image, max_im_shrink)#min(2,1400/min(image.shape[0],image.shape[1])))  #multi-scale test
+          det4 = multi_scale_test_pyramid(image, max_im_shrink)
+          det = np.row_stack((det0, det1, det2, det3, det4))
+          dets = bbox_vote(det)
+          vis_detections(img_id.split('.')[0] ,image, dets , 0.5)         
+          
+          if not os.path.exists(save_path + event):
+              os.makedirs(save_path + event)
+          f = open(save_path + event + '/' + img_id.split('.')[0] + '.txt', 'w')
+          write_to_txt(f, dets , event, img_id)
+        #   break
 if __name__=='__main__':
     test_widerface()

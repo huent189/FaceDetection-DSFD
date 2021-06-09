@@ -188,7 +188,7 @@ class SSD(nn.Module):
     
     def init_priors(self ,cfg , min_size=cfg['min_sizes'], max_size=cfg['max_sizes']):
         priorbox = PriorBox(cfg , min_size, max_size)
-        prior = Variable( priorbox.forward() , volatile=True)
+        prior = Variable( priorbox.forward() , requires_grad=False)
         return prior
         
     def forward(self, x):

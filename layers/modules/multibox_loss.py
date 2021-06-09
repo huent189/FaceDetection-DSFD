@@ -10,8 +10,8 @@ from torch.autograd import Variable
 
 from data import widerface_640
 
-from ..box_utils import (log_sum_exp, match, pa_sfd_match, refine_match,
-                         sfd_match)
+# from ..box_utils import (log_sum_exp, match, pa_sfd_match, refine_match,
+                        #  sfd_match)
 
 cfg = widerface_640
 pa = cfg['progressive_anchor']

@@ -38,6 +38,7 @@ parser.add_argument('--visual_threshold', default=0.01, type=float,
 parser.add_argument('--cuda', default=True, type=bool,
                     help='Use cuda to train model')
 parser.add_argument('--widerface_root', default=WIDERFace_ROOT, help='Location of WIDERFACE root directory')
+parser.add_argument('--preprocess', choices=[None, 'clahe'])
 args = parser.parse_args()
 
 if args.cuda and torch.cuda.is_available():
@@ -237,7 +238,7 @@ print('Finished loading model!')
 # load data
 
 # testset = WIDERFaceDetection(args.widerface_root, 'val' , None, WIDERFaceAnnotationTransform())
-testset = DarkFaceDataset(args.widerface_root, 'val' , None, WIDERFaceAnnotationTransform())
+testset = DarkFaceDataset(args.widerface_root, 'val' , None, WIDERFaceAnnotationTransform(), preprocess=args.preprocess)
 #testset = WIDERFaceDetection(args.widerface_root, 'test' , None, WIDERFaceAnnotationTransform())
 
 
@@ -272,7 +273,7 @@ def vis_detections(imgid, im,  dets, thresh=0.5):
     #              fontsize=10)
     plt.axis('off')
     plt.tight_layout()
-    plt.savefig('./val_pic_res/'+str(imgid), dpi=fig.dpi)
+    plt.savefig('../val_pic_res/'+str(imgid), dpi=fig.dpi)
 
 
 print('Finished loading data')    
@@ -307,6 +308,6 @@ def test_widerface():
               os.makedirs(save_path + event)
           f = open(save_path + event + '/' + img_id.split('.')[0] + '.txt', 'w')
           write_to_txt(f, dets , event, img_id)
-        #   break
+          # break
 if __name__=='__main__':
     test_widerface()

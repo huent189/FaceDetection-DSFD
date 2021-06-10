@@ -101,11 +101,12 @@ class DarkFaceDataset(data.Dataset):
     def __init__(self, root,
                  image_sets='train',
                  transform=None, target_transform=WIDERFaceAnnotationTransform(),
-                 dataset_name='WIDER Face'):
+                 dataset_name='WIDER Face',preprocess=None):
         self.img_ids = glob.glob(os.path.join(root, 'image/*'))
         self.label_ids = glob.glob(os.path.join(root, 'label/*'))
         self.target_transform = target_transform
         self.transform = transform
+        self.preprocess = preprocess
     def __getitem__(self, index):
         im, gt, h, w = self.pull_item(index)
         return im, gt
@@ -117,7 +118,11 @@ class DarkFaceDataset(data.Dataset):
 
         target = read_label(self.label_ids[index])
         img = cv2.imread(self.img_ids[index])
-
+        if self.preprocess == 'clahe':
+          hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+          clahe = cv2.createCLAHE(clipLimit=2.0,tileGridSize=(gridsize,gridsize))
+          hsv[-1] = clahe.apply(hsv[-1])
+          img = cv2.cvtColor(lab, cv2.COLOR_HSV2BGR)
         height, width, channels = img.shape
         if self.target_transform is not None:
             target = self.target_transform(target, width, height)

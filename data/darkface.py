@@ -14,6 +14,7 @@ import torch
 import torch.utils.data as data
 import glob
 import os
+from utils.preprocess import clahe_prepocess, iagwcd_preprocess
 '''WIDER Face Dataset Classes
 author: swordli
 '''
@@ -118,11 +119,11 @@ class DarkFaceDataset(data.Dataset):
 
         target = read_label(self.label_ids[index])
         img = cv2.imread(self.img_ids[index])
+        cv2.imwrite('/content/debug_input.png', img)
         if self.preprocess == 'clahe':
-          hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
-          clahe = cv2.createCLAHE(clipLimit=2.0,tileGridSize=(gridsize,gridsize))
-          hsv[-1] = clahe.apply(hsv[-1])
-          img = cv2.cvtColor(lab, cv2.COLOR_HSV2BGR)
+          img = clahe_prepocess(img)
+        elif self.preprocess == 'iagwcd':
+          img = iagwcd_preprocess(img)
         height, width, channels = img.shape
         if self.target_transform is not None:
             target = self.target_transform(target, width, height)
@@ -186,8 +187,16 @@ class DarkFaceDataset(data.Dataset):
         Return:
             PIL img
         '''
-        return cv2.imread(self.img_ids[index], cv2.IMREAD_COLOR)
-        pass
+        img = cv2.imread(self.img_ids[index], cv2.IMREAD_COLOR)
+        cv2.imwrite('/content/debug_input.png', img)
+
+        if self.preprocess == 'clahe':
+          img = clahe_prepocess(img)
+        elif self.preprocess == 'iagwcd':
+          img = iagwcd_preprocess(img)
+        return img
+        # return cv2.imread(self.img_ids[index], cv2.IMREAD_COLOR)
+        # pass
 
     def pull_event(self, index):
         # return self.event_ids[index]

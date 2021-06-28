@@ -38,7 +38,7 @@ parser.add_argument('--visual_threshold', default=0.01, type=float,
 parser.add_argument('--cuda', default=True, type=bool,
                     help='Use cuda to train model')
 parser.add_argument('--widerface_root', default=WIDERFace_ROOT, help='Location of WIDERFACE root directory')
-parser.add_argument('--preprocess', choices=[None, 'clahe'])
+parser.add_argument('--preprocess', choices=[None, 'clahe', 'iagwcd'])
 args = parser.parse_args()
 
 if args.cuda and torch.cuda.is_available():
@@ -242,8 +242,9 @@ testset = DarkFaceDataset(args.widerface_root, 'val' , None, WIDERFaceAnnotation
 #testset = WIDERFaceDetection(args.widerface_root, 'test' , None, WIDERFaceAnnotationTransform())
 
 
-def vis_detections(imgid, im,  dets, thresh=0.5):
+def vis_detections(imgid, im,  dets, thresh):
     '''Draw detected bounding boxes.'''
+    # print('visualize')
     class_name = 'face'
     inds = np.where(dets[:, -1] >= thresh)[0]
     if len(inds) == 0:
@@ -273,7 +274,8 @@ def vis_detections(imgid, im,  dets, thresh=0.5):
     #              fontsize=10)
     plt.axis('off')
     plt.tight_layout()
-    plt.savefig('../val_pic_res/'+str(imgid), dpi=fig.dpi)
+    # print('/content/val_pic_res/'+str(imgid))
+    plt.savefig('/content/val_pic_res/'+str(imgid), dpi=fig.dpi)
 
 
 print('Finished loading data')    
@@ -289,7 +291,8 @@ def test_widerface():
           image = testset.pull_image(i)
           img_id, annotation = testset.pull_anno(i)
           event = testset.pull_event(i)
-          print('Testing image {:d}/{:d} {}....'.format(i+1, num_images , img_id))
+          if (i % 100) == 0:
+            print('Testing image {:d}/{:d} {}....'.format(i+1, num_images , img_id))
           #max_im_shrink = ( (2000.0*2000.0) / (img.shape[0] * img.shape[1])) ** 0.5
           max_im_shrink = (0x7fffffff / 200.0 / (image.shape[0] * image.shape[1])) ** 0.5 # the max size of input image for caffe
           max_im_shrink = 3 if max_im_shrink > 3 else max_im_shrink

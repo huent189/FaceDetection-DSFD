@@ -305,7 +305,7 @@ def test_widerface():
           det4 = multi_scale_test_pyramid(image, max_im_shrink)
           det = np.row_stack((det0, det1, det2, det3, det4))
           dets = bbox_vote(det)
-          vis_detections(img_id.split('.')[0] ,image, dets , 0.5)         
+          # vis_detections(img_id.split('.')[0] ,image, dets , 0.5)         
           
           if not os.path.exists(save_path + event):
               os.makedirs(save_path + event)

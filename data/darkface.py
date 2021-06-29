@@ -105,6 +105,10 @@ class DarkFaceDataset(data.Dataset):
                  dataset_name='WIDER Face',preprocess=None):
         self.img_ids = glob.glob(os.path.join(root, 'image/*'))
         self.label_ids = glob.glob(os.path.join(root, 'label/*'))
+        processed = glob.glob('/content/result/*')
+        processed_name = [os.path.split(p)[-1].split('.')[0] for p in processed]
+        self.img_ids = [p for p in self.img_ids if os.path.split(p)[-1].split('.')[0] not in processed_name]
+        self.label_ids = [p for p in self.label_ids if os.path.split(p)[-1].split('.')[0] not in processed_name]
         self.target_transform = target_transform
         self.transform = transform
         self.preprocess = preprocess

@@ -46,6 +46,7 @@ parser.add_argument('--visual_threshold', default=0.01, type=float,
                     help='Final confidence threshold')
 parser.add_argument('--cuda', default=True, type=bool,
                     help='Use cuda to train model')
+parser.add_argument('--gamma', default=1.0, type=float)
 args = parser.parse_args()
 
 if args.cuda and torch.cuda.is_available():
@@ -99,7 +100,12 @@ def test_fddbface(net):
                 sys.stdout.flush()
                 #np_image = imread(os.path.join(data_dir, image_name+'.jpg'))
 
+
                 np_image = cv2.imread(os.path.join(args.data_dir, image_name+'.jpg'))
+                if args.gamma != 1:
+                    np_image = np_image / 255
+                    np_image = np_image ** ( 1/ args.gamma)
+                    np_image = np.uint8(np_image * 255)
                 if len(np_image.shape) < 3:
                     np_image = np.stack((np_image,) * 3, -1)
                 image = np_image#torch.from_numpy(np_image).permute(2, 0, 1)

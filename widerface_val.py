@@ -26,29 +26,8 @@ from data import (WIDERFace_ROOT, WIDERFaceAnnotationTransform,
                   WIDERFaceDetection)
 from face_ssd import build_ssd
 
-plt.switch_backend('agg')
 
-parser = argparse.ArgumentParser(description='DSFD: Dual Shot Face Detector')
-parser.add_argument('--trained_model', default='weights/WIDERFace_DSFD_RES152.pth',
-                    type=str, help='Trained state_dict file path to open')
-parser.add_argument('--save_folder', default='eval_tools/WIDERFace_DSFD_RES152_results/', type=str,
-                    help='Dir to save results')
-parser.add_argument('--visual_threshold', default=0.01, type=float,
-                    help='Final confidence threshold')
-parser.add_argument('--cuda', default=True, type=bool,
-                    help='Use cuda to train model')
-parser.add_argument('--widerface_root', default=WIDERFace_ROOT, help='Location of WIDERFACE root directory')
-parser.add_argument('--preprocess', choices=[None, 'clahe', 'iagwcd'])
-args = parser.parse_args()
-
-if args.cuda and torch.cuda.is_available():
-    torch.set_default_tensor_type('torch.cuda.FloatTensor')
-else:
-    torch.set_default_tensor_type('torch.FloatTensor')
-if not os.path.exists(args.save_folder):
-    os.mkdir(args.save_folder)
-
-def detect_face(image, shrink):
+def detect_face(image, shrink, net):
     x = image
     if shrink != 1:
         x = cv2.resize(image, None, None, fx=shrink, fy=shrink, interpolation=cv2.INTER_LINEAR)
@@ -74,8 +53,8 @@ def detect_face(image, shrink):
     for i in range(detections.size(1)):
         j = 0
         while detections[0,i,j,0] >= 0.01:
-            score = detections[0,i,j,0].cpu().numpy()
-            pt = (detections[0, i, j, 1:]*scale).cpu().numpy()
+            score = detections[0,i,j,0].detach().cpu().numpy()
+            pt = (detections[0, i, j, 1:]*scale).detach().cpu().numpy()
             boxes.append([pt[0],pt[1],pt[2],pt[3]])
             scores.append(score)
             j += 1
@@ -99,28 +78,28 @@ def detect_face(image, shrink):
     return det
 
 
-def multi_scale_test(image, max_im_shrink):
+def multi_scale_test(image, max_im_shrink, net):
     # shrink detecting and shrink only detect big face
     st = 0.5 if max_im_shrink >= 0.75 else 0.5 * max_im_shrink
-    det_s = detect_face(image, st)
+    det_s = detect_face(image, st, net)
     if max_im_shrink > 0.75:
-        det_s = np.row_stack((det_s,detect_face(image,0.75)))
+        det_s = np.row_stack((det_s,detect_face(image,0.75, net)))
     index = np.where(np.maximum(det_s[:, 2] - det_s[:, 0] + 1, det_s[:, 3] - det_s[:, 1] + 1) > 30)[0]
     det_s = det_s[index, :]
     # enlarge one times
     bt = min(2, max_im_shrink) if max_im_shrink > 1 else (st + max_im_shrink) / 2
-    det_b = detect_face(image, bt)
+    det_b = detect_face(image, bt, net)
 
     # enlarge small iamge x times for small face
     if max_im_shrink > 1.5:
-        det_b = np.row_stack((det_b,detect_face(image,1.5)))
+        det_b = np.row_stack((det_b,detect_face(image,1.5, net)))
     if max_im_shrink > 2:
         bt *= 2
         while bt < max_im_shrink: # and bt <= 2:
-            det_b = np.row_stack((det_b, detect_face(image, bt)))
+            det_b = np.row_stack((det_b, detect_face(image, bt, net)))
             bt *= 2
 
-        det_b = np.row_stack((det_b, detect_face(image, max_im_shrink)))
+        det_b = np.row_stack((det_b, detect_face(image, max_im_shrink, net)))
 
     # enlarge only detect small face
     if bt > 1:
@@ -132,9 +111,9 @@ def multi_scale_test(image, max_im_shrink):
 
     return det_s, det_b
 
-def multi_scale_test_pyramid(image, max_shrink):
+def multi_scale_test_pyramid(image, max_shrink, net):
     # shrink detecting and shrink only detect big face
-    det_b = detect_face(image, 0.25)
+    det_b = detect_face(image, 0.25, net)
     index = np.where(
         np.maximum(det_b[:, 2] - det_b[:, 0] + 1, det_b[:, 3] - det_b[:, 1] + 1)
         > 30)[0]
@@ -143,7 +122,7 @@ def multi_scale_test_pyramid(image, max_shrink):
     st = [1.25, 1.75, 2.25]
     for i in range(len(st)):
         if (st[i] <= max_shrink):
-            det_temp = detect_face(image, st[i])
+            det_temp = detect_face(image, st[i], net)
             # enlarge only detect small face
             if st[i] > 1:
                 index = np.where(
@@ -160,9 +139,9 @@ def multi_scale_test_pyramid(image, max_shrink):
 
 
 
-def flip_test(image, shrink):
+def flip_test(image, shrink, net):
     image_f = cv2.flip(image, 1)
-    det_f = detect_face(image_f, shrink)
+    det_f = detect_face(image_f, shrink, net)
 
     det_t = np.zeros(det_f.shape)
     det_t[:, 0] = image.shape[1] - det_f[:, 2]
@@ -226,20 +205,6 @@ def write_to_txt(f, det , event, im_name):
         f.write('{:.1f} {:.1f} {:.1f} {:.1f} {:.3f}\n'.
                 format(np.floor(xmin), np.floor(ymin), np.ceil(xmax - xmin + 1), np.ceil(ymax - ymin + 1), score))
 
-# load net
-cfg = widerface_640
-num_classes = len(WIDERFace_CLASSES) + 1 # +1 background
-net = build_ssd('test', cfg['min_dim'], num_classes) # initialize SSD
-net.load_state_dict(torch.load(args.trained_model))
-net.cuda()
-net.eval()
-print('Finished loading model!')
-
-# load data
-
-# testset = WIDERFaceDetection(args.widerface_root, 'val' , None, WIDERFaceAnnotationTransform())
-testset = DarkFaceDataset(args.widerface_root, 'val' , None, WIDERFaceAnnotationTransform(), preprocess=args.preprocess)
-#testset = WIDERFaceDetection(args.widerface_root, 'test' , None, WIDERFaceAnnotationTransform())
 
 
 def vis_detections(imgid, im,  dets, thresh):
@@ -277,9 +242,8 @@ def vis_detections(imgid, im,  dets, thresh):
     # print('/content/val_pic_res/'+str(imgid))
     plt.savefig('/content/val_pic_res/'+str(imgid), dpi=fig.dpi)
 
-
-print('Finished loading data')    
-def test_widerface():
+  
+def test_widerface(net):
     # evaluation
     cuda = args.cuda
     transform = TestBaseTransform((104, 117, 123))
@@ -301,8 +265,8 @@ def test_widerface():
 
           det0 = detect_face(image, shrink)  # origin test
           det1 = flip_test(image, shrink)    # flip test
-          [det2, det3] = multi_scale_test(image, max_im_shrink)#min(2,1400/min(image.shape[0],image.shape[1])))  #multi-scale test
-          det4 = multi_scale_test_pyramid(image, max_im_shrink)
+          [det2, det3] = multi_scale_test(image, max_im_shrink, net)#min(2,1400/min(image.shape[0],image.shape[1])))  #multi-scale test
+          det4 = multi_scale_test_pyramid(image, max_im_shrink, net)
           det = np.row_stack((det0, det1, det2, det3, det4))
           dets = bbox_vote(det)
           # vis_detections(img_id.split('.')[0] ,image, dets , 0.5)         
@@ -313,4 +277,40 @@ def test_widerface():
           write_to_txt(f, dets , event, img_id)
           # break
 if __name__=='__main__':
-    test_widerface()
+    plt.switch_backend('agg')
+    print('abfhjdsgfhjgs')
+    parser = argparse.ArgumentParser(description='DSFD: Dual Shot Face Detector')
+    parser.add_argument('--trained_model', default='weights/WIDERFace_DSFD_RES152.pth',
+                        type=str, help='Trained state_dict file path to open')
+    parser.add_argument('--save_folder', default='eval_tools/WIDERFace_DSFD_RES152_results/', type=str,
+                        help='Dir to save results')
+    parser.add_argument('--visual_threshold', default=0.01, type=float,
+                        help='Final confidence threshold')
+    parser.add_argument('--cuda', default=True, type=bool,
+                        help='Use cuda to train model')
+    parser.add_argument('--widerface_root', default=WIDERFace_ROOT, help='Location of WIDERFACE root directory')
+    parser.add_argument('--preprocess', choices=[None, 'clahe', 'iagwcd'])
+    args = parser.parse_args()
+
+    if args.cuda and torch.cuda.is_available():
+        torch.set_default_tensor_type('torch.cuda.FloatTensor')
+    else:
+        torch.set_default_tensor_type('torch.FloatTensor')
+    if not os.path.exists(args.save_folder):
+        os.mkdir(args.save_folder)
+
+    # load net
+    cfg = widerface_640
+    num_classes = len(WIDERFace_CLASSES) + 1 # +1 background
+    net = build_ssd('test', cfg['min_dim'], num_classes) # initialize SSD
+    net.load_state_dict(torch.load(args.trained_model))
+    net.cuda()
+    net.eval()
+    print('Finished loading model!')
+
+    # load data
+
+    # testset = WIDERFaceDetection(args.widerface_root, 'val' , None, WIDERFaceAnnotationTransform())
+    testset = DarkFaceDataset(args.widerface_root, 'val' , None, WIDERFaceAnnotationTransform(), preprocess=args.preprocess)
+    #testset = WIDERFaceDetection(args.widerface_root, 'test' , None, WIDERFaceAnnotationTransform())
+    test_widerface(net)

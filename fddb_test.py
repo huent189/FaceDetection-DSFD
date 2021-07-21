@@ -41,7 +41,11 @@ parser.add_argument('--data_dir', default='./fddb/originalPics',
                     type=str, help='Dir to all images')
 parser.add_argument('--det_dir', default='./fddb/results1',
                     type=str, help='Dir to save results')
-
+parser.add_argument('--preprocess',
+                    type=str, choices[None, 'clahe', 'iagcwd', 'rime'])
+parser.add_argument('--pretrain_under') 
+parser.add_argument('--pretrain_mix') 
+parser.add_argument('--pretrain_over') 
 parser.add_argument('--visual_threshold', default=0.01, type=float,
                     help='Final confidence threshold')
 parser.add_argument('--cuda', default=True, type=bool,
@@ -83,7 +87,8 @@ def test_fddbface():
     cuda = args.cuda
     thresh=cfg['conf_thresh']
     os.makedirs(args.det_dir, exist_ok=True)
-
+    if args.preprocess == 'rime':
+        preprocesor = RIME(args.pretrain_under, args.pretrain_mix, args.pretrain_over)
     all_splits = sorted([_ for _ in os.listdir(args.split_dir) if 'ellipseList' not in _])
     for folder_ind in range(1, 11):
         with open(os.path.join(args.split_dir, all_splits[folder_ind-1]), 'r') as fp:
@@ -100,6 +105,8 @@ def test_fddbface():
                 #np_image = imread(os.path.join(data_dir, image_name+'.jpg'))
 
                 np_image = cv2.imread(os.path.join(args.data_dir, image_name+'.jpg'))
+                if args.preprocess == 'rime':
+                    np_image = preprocesor.preprocess(np_image)
                 if len(np_image.shape) < 3:
                     np_image = np.stack((np_image,) * 3, -1)
                 image = np_image#torch.from_numpy(np_image).permute(2, 0, 1)

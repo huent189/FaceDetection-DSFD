@@ -27,8 +27,8 @@ from data import (WIDERFace_ROOT, WIDERFaceAnnotationTransform,
 from face_ssd import build_ssd
 # from utils import draw_toolbox
 from widerface_val import (bbox_vote, detect_face, multi_scale_test,
-                           multi_scale_test_pyramid)
-
+                           multi_scale_test_pyramid, vis_detections)
+from utils.rime import RIME
 #plt.switch_backend('agg')
 print('abdhgfhag')
 parser = argparse.ArgumentParser(description='DSFD: Dual Shot Face Detector')
@@ -42,7 +42,7 @@ parser.add_argument('--data_dir', default='./fddb/originalPics',
 parser.add_argument('--det_dir', default='./fddb/results1',
                     type=str, help='Dir to save results')
 parser.add_argument('--preprocess',
-                    type=str, choices[None, 'clahe', 'iagcwd', 'rime'])
+                    type=str, choices = [None, 'clahe', 'iagcwd', 'rime'])
 parser.add_argument('--pretrain_under') 
 parser.add_argument('--pretrain_mix') 
 parser.add_argument('--pretrain_over') 
@@ -149,7 +149,7 @@ def test_fddbface(net):
                 bbox_width = bbox_xmax - bbox_xmin + 1
 
 
-                # img_to_draw = draw_toolbox.absolute_bboxes_draw_on_img(np_image, scores, dets, thickness=2)
+                # img_to_draw = vis_detections(os.path.join('./debug/{}.jpg').format(image_ind), np_image, dets,0.5)
                 # imsave(os.path.join('./debug/{}.jpg').format(image_ind), img_to_draw)
 
 

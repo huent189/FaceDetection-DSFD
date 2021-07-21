@@ -25,12 +25,12 @@ from data import WIDERFace_CLASSES as labelmap
 from data import (WIDERFace_ROOT, WIDERFaceAnnotationTransform,
                   WIDERFaceDetection)
 from face_ssd import build_ssd
-from utils import draw_toolbox
+# from utils import draw_toolbox
 from widerface_val import (bbox_vote, detect_face, multi_scale_test,
                            multi_scale_test_pyramid)
 
 #plt.switch_backend('agg')
-
+print('abdhgfhag')
 parser = argparse.ArgumentParser(description='DSFD: Dual Shot Face Detector')
 parser.add_argument('--trained_model', default='weights/WIDERFace_DSFD_RES152.pth',
                     type=str, help='Trained state_dict file path to open')
@@ -50,6 +50,7 @@ parser.add_argument('--visual_threshold', default=0.01, type=float,
                     help='Final confidence threshold')
 parser.add_argument('--cuda', default=True, type=bool,
                     help='Use cuda to train model')
+parser.add_argument('--gamma', default=1.0, type=float)
 args = parser.parse_args()
 
 if args.cuda and torch.cuda.is_available():
@@ -59,9 +60,9 @@ else:
 
 
 
-def flip_test(image, shrink):
+def flip_test(image, shrink, net):
     image_f = cv2.flip(image, 1)
-    det_f = detect_face(image_f, shrink)
+    det_f = detect_face(image_f, shrink, net)
 
     det_t = np.zeros(det_f.shape)
     det_t[:, 0] = image.shape[1] - det_f[:, 2]
@@ -82,7 +83,7 @@ net.eval()
 print('Finished loading model!')
 
 
-def test_fddbface():
+def test_fddbface(net):
     # evaluation
     cuda = args.cuda
     thresh=cfg['conf_thresh']
@@ -104,7 +105,12 @@ def test_fddbface():
                 sys.stdout.flush()
                 #np_image = imread(os.path.join(data_dir, image_name+'.jpg'))
 
+
                 np_image = cv2.imread(os.path.join(args.data_dir, image_name+'.jpg'))
+                if args.gamma != 1:
+                    np_image = np_image / 255
+                    np_image = np_image ** ( 1/ args.gamma)
+                    np_image = np.uint8(np_image * 255)
                 if args.preprocess == 'rime':
                     np_image = preprocesor.preprocess(np_image)
                 if len(np_image.shape) < 3:
@@ -117,8 +123,8 @@ def test_fddbface():
 
                 shrink = max_im_shrink if max_im_shrink < 1 else 1
 
-                det0 = detect_face(image, shrink)  # origin test
-                det1 = flip_test(image, shrink)    # flip test
+                det0 = detect_face(image, shrink, net)  # origin test
+                det1 = flip_test(image, shrink, net)    # flip test
 
                 det = np.row_stack((det0, det1))
 
@@ -143,8 +149,8 @@ def test_fddbface():
                 bbox_width = bbox_xmax - bbox_xmin + 1
 
 
-                img_to_draw = draw_toolbox.absolute_bboxes_draw_on_img(np_image, scores, dets, thickness=2)
-                imsave(os.path.join('./debug/{}.jpg').format(image_ind), img_to_draw)
+                # img_to_draw = draw_toolbox.absolute_bboxes_draw_on_img(np_image, scores, dets, thickness=2)
+                # imsave(os.path.join('./debug/{}.jpg').format(image_ind), img_to_draw)
 
 
                 valid_mask = np.logical_and(np.logical_and((bbox_height > 1), (bbox_width > 1)), (scores > 0.05))
@@ -161,4 +167,10 @@ def test_fddbface():
         sys.stdout.flush()
 
 if __name__=='__main__':
-    test_fddbface()
+    cfg = widerface_640
+    num_classes = len(WIDERFace_CLASSES) + 1 # +1 background
+    net = build_ssd('test', cfg['min_dim'], num_classes) # initialize SSD
+    net.load_state_dict(torch.load(args.trained_model))
+    net.cuda()
+    net.eval()
+    test_fddbface(net)

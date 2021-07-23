@@ -101,6 +101,8 @@ def test_fddbface(net):
         with open(os.path.join(args.det_dir, 'fold-{:02d}-out.txt'.format(folder_ind)), 'wt') as f:
             all_image_length = len(all_images)
             for image_ind, image_name in enumerate(all_images):
+                if not ('532' in image_name):
+                    continue
                 sys.stdout.write('\r>> Predicting image %d/%d' % (image_ind, all_image_length))
                 sys.stdout.flush()
                 #np_image = imread(os.path.join(data_dir, image_name+'.jpg'))
@@ -108,9 +110,11 @@ def test_fddbface(net):
 
                 np_image = cv2.imread(os.path.join(args.data_dir, image_name+'.jpg'))
                 if args.gamma != 1:
-                    np_image = np_image / 255
-                    np_image = np_image ** ( 1/ args.gamma)
-                    np_image = np.uint8(np_image * 255)
+                    lab = cv2.cvtColor(np_image, cv2.COLOR_BGR2LAB)
+                    l, a, b = cv2.split(lab)
+                    l = (np.power(l / 255, args.gamma) * 255).clip(0,255).astype(np.uint8)
+                    lab = cv2.merge([l, a, b])
+                    np_image = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
                 if args.preprocess == 'rime':
                     np_image = preprocesor.preprocess(np_image)
                 if len(np_image.shape) < 3:
@@ -149,7 +153,7 @@ def test_fddbface(net):
                 bbox_width = bbox_xmax - bbox_xmin + 1
 
 
-                # img_to_draw = vis_detections(os.path.join('./debug/{}.jpg').format(image_ind), np_image, dets,0.5)
+                img_to_draw = vis_detections(os.path.join('./debug/{}_{}.jpg').format(image_name.split('/')[-1], args.gamma), np_image, dets,0.5)
                 # imsave(os.path.join('./debug/{}.jpg').format(image_ind), img_to_draw)
 
 
@@ -163,6 +167,7 @@ def test_fddbface(net):
                         continue
 
                     f.write('{:.1f} {:.1f} {:.1f} {:.1f} {:.3f}\n'.format(np.floor(bbox_xmin[det_ind]), np.floor(bbox_ymin[det_ind]), np.ceil(bbox_width[det_ind]), np.ceil(bbox_height[det_ind]), scores[det_ind]))
+                break
         sys.stdout.write('\n')
         sys.stdout.flush()
 

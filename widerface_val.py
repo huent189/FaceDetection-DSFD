@@ -240,7 +240,7 @@ def vis_detections(imgid, im,  dets, thresh):
     plt.axis('off')
     plt.tight_layout()
     # print('/content/val_pic_res/'+str(imgid))
-    plt.savefig('/content/val_pic_res/'+str(imgid), dpi=fig.dpi)
+    plt.savefig(str(imgid), dpi=fig.dpi)
 
   
 def test_widerface(net):

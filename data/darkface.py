@@ -103,9 +103,9 @@ class DarkFaceDataset(data.Dataset):
                  image_sets='train',
                  transform=None, target_transform=WIDERFaceAnnotationTransform(),
                  dataset_name='WIDER Face',preprocess=None):
-        self.img_ids = glob.glob(os.path.join(root, 'image/*'))
-        self.label_ids = glob.glob(os.path.join(root, 'label/*'))
-        processed = glob.glob('/content/result/*')
+        self.img_ids = glob.glob(os.path.join(root, '*'))
+        self.label_ids = glob.glob(os.path.join(root, '../label/*'))
+        processed = glob.glob('/home/ubuntu/code/FaceDetection-DSFD/our_result/*')
         processed_name = [os.path.split(p)[-1].split('.')[0] for p in processed]
         self.img_ids = [p for p in self.img_ids if os.path.split(p)[-1].split('.')[0] not in processed_name]
         self.label_ids = [p for p in self.label_ids if os.path.split(p)[-1].split('.')[0] not in processed_name]
@@ -123,7 +123,8 @@ class DarkFaceDataset(data.Dataset):
 
         target = read_label(self.label_ids[index])
         img = cv2.imread(self.img_ids[index])
-        cv2.imwrite('/content/debug_input.png', img)
+        assert img is not None, self.img_ids[index]
+        # cv2.imwrite('/content/debug_input.png', img)
         if self.preprocess == 'clahe':
           img = clahe_prepocess(img)
         elif self.preprocess == 'iagwcd':
@@ -192,7 +193,8 @@ class DarkFaceDataset(data.Dataset):
             PIL img
         '''
         img = cv2.imread(self.img_ids[index], cv2.IMREAD_COLOR)
-        cv2.imwrite('/content/debug_input.png', img)
+        assert img is not None, self.img_ids[index]
+        # cv2.imwrite('/content/debug_input.png', img)
 
         if self.preprocess == 'clahe':
           img = clahe_prepocess(img)

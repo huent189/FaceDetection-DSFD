@@ -225,7 +225,7 @@ def vis_detections(imgid, im,  dets, thresh):
             plt.Rectangle((bbox[0], bbox[1]),
                           bbox[2] - bbox[0],
                           bbox[3] - bbox[1], fill=False,
-                          edgecolor='green', linewidth=2.5)
+                          edgecolor='red', linewidth=2.5)
             )
         '''
         ax.text(bbox[0], bbox[1] - 5,

@@ -138,3 +138,5 @@ dmypy.json
 cython_debug/
 data/__pycache__/
 **/__pycache__
+*.pyc
+data/__pycache__/__init__.cpython-36.pyc

@@ -139,4 +139,9 @@ cython_debug/
 data/__pycache__/
 **/__pycache__
 *.pyc
-data/__pycache__/__init__.cpython-36.pyc
+terminal.ipynb
+debug/*
+widerface.zip
+debug.png
+gamma_hsv.jpg
+rime/

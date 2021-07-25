@@ -1,5 +1,8 @@
 import cv2
 import numpy as np
+import torch
+from utils.zerodce import ZeroDCE, ZeroDCE_ext
+from utils.images import np2torch, torch2np
 def clahe_prepocess(img):
   clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
   lab = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -65,3 +68,16 @@ def iagwcd_preprocess(img):
     else:
         img_output = img
     return img_output
+class DLPreprocesor():
+    def __init__(self, model_type, pretrain):
+        if model_type == 'zerodce':
+            self.model = ZeroDCE().cuda()
+        elif model_type == 'zerodce_ext':
+            self.model = ZeroDCE_ext(scale_factor=12).cuda()
+        self.model.load_state_dict(torch.load(pretrain))
+        self.model.eval()
+    def preprocess(self, np_im):
+        im = np2torch(np_im).cuda()
+        with torch.no_grad():
+            im = self.model(im)
+        return torch2np(im)

@@ -29,7 +29,7 @@ from face_ssd import build_ssd
 from widerface_val import (bbox_vote, detect_face, multi_scale_test,
                            multi_scale_test_pyramid, vis_detections)
 from utils.rime import RIME
-from utils.preprocess import clahe_prepocess, iagwcd_preprocess
+from utils.preprocess import clahe_prepocess, iagwcd_preprocess, DLPreprocesor
 #plt.switch_backend('agg')
 print('abdhgfhag')
 parser = argparse.ArgumentParser(description='DSFD: Dual Shot Face Detector')
@@ -43,10 +43,11 @@ parser.add_argument('--data_dir', default='./fddb/originalPics',
 parser.add_argument('--det_dir', default='./fddb/results1',
                     type=str, help='Dir to save results')
 parser.add_argument('--preprocess',
-                    type=str, choices = ['none', 'clahe', 'iagcwd', 'rime'])
+                    type=str, default='none', choices = ['none', 'clahe', 'iagcwd', 'rime', 'zerodce', 'zerodce_ext'])
 parser.add_argument('--pretrain_under') 
 parser.add_argument('--pretrain_mix') 
 parser.add_argument('--pretrain_over') 
+parser.add_argument('--pretrain') 
 parser.add_argument('--visual_threshold', default=0.01, type=float,
                     help='Final confidence threshold')
 parser.add_argument('--cuda', default=True, type=bool,
@@ -91,6 +92,8 @@ def test_fddbface(net):
     os.makedirs(args.det_dir, exist_ok=True)
     if args.preprocess == 'rime':
         preprocesor = RIME(args.pretrain_under, args.pretrain_mix, args.pretrain_over)
+    elif args.preprocess in ['zerodce', 'zerodce_ext']:
+        preprocesor = DLPreprocesor(args.preprocess, args.pretrain)
     all_splits = sorted([_ for _ in os.listdir(args.split_dir) if 'ellipseList' not in _])
     for folder_ind in range(1, 11):
         with open(os.path.join(args.split_dir, all_splits[folder_ind-1]), 'r') as fp:
@@ -114,7 +117,7 @@ def test_fddbface(net):
                        np_image = np.clip(np_image, 1/255, 1)
                     np_image = np_image ** ( 1/ args.gamma)
                     np_image = np.uint8(np_image * 255)
-                if args.preprocess == 'rime':
+                if args.preprocess in ['rime', 'zerodce', 'zerodce_ext']:
                     np_image = preprocesor.preprocess(np_image)
                 elif args.preprocess == 'clahe':
                     np_image = clahe_prepocess(np_image)
@@ -156,8 +159,8 @@ def test_fddbface(net):
                 bbox_width = bbox_xmax - bbox_xmin + 1
 
 
-                if args.gamma in [0.1, 0.2, 1, 5, 10]:
-                    img_to_draw = vis_detections(os.path.join('./debug/{}_{}_{}.jpg').format(image_name.split('/')[-1], args.gamma, args.preprocess), np_image, dets,0.5)
+                # if args.gamma in [0.1, 0.2, 1, 5, 10]:
+                    # img_to_draw = vis_detections(os.path.join('./debug/{}_{}_{}.jpg').format(image_name.split('/')[-1], args.gamma, args.preprocess), np_image, dets,0.5)
                 # imsave(os.path.join('./debug/{}.jpg').format(image_ind), img_to_draw)
 
 

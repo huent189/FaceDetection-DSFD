@@ -190,8 +190,8 @@ def bbox_vote(det):
 
 
 def write_to_txt(f, det , event, im_name):
-    f.write('{:s}\n'.format(im_name + '.jpg'))
-    f.write('{:d}\n'.format(det.shape[0]))
+    #f.write('{:s}\n'.format(im_name + '.jpg'))
+    ##f.write('{:d}\n'.format(det.shape[0]))
     for i in range(det.shape[0]):
         xmin = det[i][0]
         ymin = det[i][1]
@@ -202,8 +202,10 @@ def write_to_txt(f, det , event, im_name):
         #f.write('{:.1f} {:.1f} {:.1f} {:.1f} {:.3f}\n'.
         #        format(xmin, ymin, (xmax - xmin + 1), (ymax - ymin + 1), score))
 
+#         f.write('{:.1f} {:.1f} {:.1f} {:.1f} {:.3f}\n'.
+#                 format(np.floor(xmin), np.floor(ymin), np.ceil(xmax - xmin + 1), np.ceil(ymax - ymin + 1), score))
         f.write('{:.1f} {:.1f} {:.1f} {:.1f} {:.3f}\n'.
-                format(np.floor(xmin), np.floor(ymin), np.ceil(xmax - xmin + 1), np.ceil(ymax - ymin + 1), score))
+                format(np.floor(xmin), np.floor(ymin), np.ceil(xmax + 1), np.ceil(ymax + 1), score))
 
 
 
